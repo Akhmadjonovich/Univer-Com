@@ -239,7 +239,7 @@ export default function OrgDashboard() {
             </div>
           </div>
         )}
-        <div className="bg-white p-4 rounded-xl shadow flex flex-col h-[520px]">
+        <div className="bg-white p-4 rounded-xl shadow flex flex-col h-[400px]">
           <h2 className="text-xl font-semibold mb-2">Chat</h2>
 
           <div className="flex-1 overflow-y-auto space-y-2 mb-3">
