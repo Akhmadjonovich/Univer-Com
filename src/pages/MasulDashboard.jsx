@@ -1,70 +1,100 @@
 import { useState, useEffect } from "react";
+import { ref, onValue } from "firebase/database";
+import { db } from "../../firebase";
+
+/**
+ * Muammo turlari (filter uchun)
+ */
+const PROBLEM_TYPES = [
+  { value: "all", label: "Barchasi" },
+  { value: "mexanika", label: "Mexanika-mashinasozlik" },
+  { value: "energetika", label: "Energetika muhandisligi" },
+  { value: "kimyo", label: "Kimyo texnologiya" },
+  { value: "arxitektura", label: "Arxitektura va qurilish" },
+  { value: "boshqaruv", label: "Ishlab chiqarishda boshqaruv" },
+  { value: "yengil_sanoat", label: "Yengil sanoat va to‘qimachilik" },
+  {
+    value: "axborot_texnologiyalari",
+    label: "Axborot texnologiyalari va telekommunikatsiya",
+  },
+];
 
 export default function MasulDashboard() {
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [problems, setProblems] = useState([]);
-  const [selectedProblem, setSelectedProblem] = useState(null);
-  const [uploadFile, setUploadFile] = useState(null);
+  const [typeFilter, setTypeFilter] = useState("all");
 
-  // FAKE ORGS
+  // =============================
+  // LOAD ORGANIZATIONS
+  // =============================
   useEffect(() => {
-    const fakeOrgs = [
-      { id: "org1", name: "Axror Academy", phone: "+998 99 111 22 33" },
-      { id: "org2", name: "IT Park Jizzax", phone: "+998 93 555 44 11" },
-      { id: "org3", name: "Digital City", phone: "+998 94 777 88 99" },
-      { id: "org4", name: "Mega Soft LLC", phone: "+998 90 123 45 67" },
-    ];
-    setOrgs(fakeOrgs);
+    const orgRef = ref(db, "users");
+
+    return onValue(orgRef, (snap) => {
+      const data = snap.val();
+      if (!data) return setOrgs([]);
+
+      const list = Object.keys(data)
+        .map((id) => ({ id, ...data[id] }))
+        .filter((u) => u.role === "tashkilot");
+
+      setOrgs(list);
+    });
   }, []);
 
-  // FAKE PROBLEMS
+  // =============================
+  // LOAD PROBLEMS BY ORG
+  // =============================
   useEffect(() => {
     if (!selectedOrg) return;
 
-    const fakeProblems = {
-      org1: [
-        { id: "p1", text: "Admin panelga kira olmayapmiz.", status: "new", createdAt: Date.now() - 50000 },
-        { id: "p2", text: "Xodimlar ro'yxati yuklanmayapti.", status: "progress", createdAt: Date.now() - 180000 },
-      ],
-      org2: [
-        { id: "p3", text: "PDF yuklanmayapti.", status: "new", createdAt: Date.now() - 250000 },
-      ],
-      org3: [
-        { id: "p4", text: "Login xatosi.", status: "done", createdAt: Date.now() - 600000 },
-        { id: "p5", text: "Fayl yuklash ishlamayapti.", status: "new", createdAt: Date.now() - 120000 },
-      ],
-      org4: [
-        { id: "p6", text: "Server sekin ishlayapti.", status: "progress", createdAt: Date.now() - 90000 },
-      ],
-    };
+    const problemsRef = ref(db, "problems");
 
-    setProblems(fakeProblems[selectedOrg.id] || []);
-  }, [selectedOrg]);
+    return onValue(problemsRef, (snap) => {
+      const data = snap.val();
+      if (!data) return setProblems([]);
 
-  const sendSolution = () => {
-    if (!uploadFile || !selectedProblem) return;
+      let list = Object.keys(data)
+        .map((id) => ({ id, ...data[id] }))
+        .filter((p) => p.orgId === selectedOrg.id);
 
-    alert(`Fake yechim yuborildi:
-Muammo: ${selectedProblem.text}
-Fayl: ${uploadFile.name}`);
+      if (typeFilter !== "all") {
+        list = list.filter((p) => p.type === typeFilter);
+      }
 
-    setUploadFile(null);
-    setSelectedProblem(null);
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      setProblems(list);
+    });
+  }, [selectedOrg, typeFilter]);
+
+  // =============================
+  // COPY TEXT
+  // =============================
+  const copyText = (text) => {
+    navigator.clipboard.writeText(text);
+    alert("Muammo matni nusxalandi ✅");
   };
 
-  return (
-    <div className="flex bg-gray-100 h-screen">
+  // TYPE label helper
+  const getTypeLabel = (value) =>
+    PROBLEM_TYPES.find((t) => t.value === value)?.label || value;
 
-      {/* LEFT SIDEBAR - ORGS */}
-      <div className="w-72 bg-white shadow-lg p-5 overflow-y-auto">
+  return (
+    <div className="flex flex-col md:flex-row bg-gray-100 h-screen">
+      {/* ================= LEFT SIDEBAR ================= */}
+      <div className="md:w-72 w-full bg-white shadow-lg p-5 overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Tashkilotlar</h2>
 
         {orgs.map((o) => (
           <div
             key={o.id}
-            className={`p-3 mb-2 rounded-lg cursor-pointer border 
-              ${selectedOrg?.id === o.id ? "bg-blue-100 border-blue-400" : "hover:bg-gray-100"}
+            className={`p-3 mb-2 rounded-lg cursor-pointer border
+              ${
+                selectedOrg?.id === o.id
+                  ? "bg-blue-100 border-blue-400"
+                  : "hover:bg-gray-100"
+              }
             `}
             onClick={() => setSelectedOrg(o)}
           >
@@ -74,9 +104,8 @@ Fayl: ${uploadFile.name}`);
         ))}
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="flex-1 p-8 overflow-y-auto">
-
+      {/* ================= RIGHT SIDE ================= */}
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         {!selectedOrg && (
           <p className="text-gray-500 text-center mt-20">
             Tashkilot tanlang 👈
@@ -85,95 +114,76 @@ Fayl: ${uploadFile.name}`);
 
         {selectedOrg && (
           <>
-            {/* ORGANIZATION INFO */}
+            {/* ORG INFO */}
             <div className="bg-white p-5 rounded-xl shadow mb-6">
               <h2 className="text-2xl font-bold">{selectedOrg.name}</h2>
               <p className="text-gray-600">{selectedOrg.phone}</p>
+
               <hr className="my-3" />
 
-              <div className="flex gap-6">
-                <p><strong>Jami muammolar:</strong> {problems.length}</p>
-                <p><strong>Yechilgan:</strong> {problems.filter(p => p.status === "done").length}</p>
-                <p><strong>Yechilmagan:</strong> {problems.filter(p => p.status !== "done").length}</p>
-              </div>
+              <p>
+                <strong>Jami muammolar:</strong> {problems.length}
+              </p>
+            </div>
+
+            {/* FILTER */}
+            <div className="mb-4">
+              <select
+                className="border p-2 rounded"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                {PROBLEM_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* PROBLEMS LIST */}
             <div className="bg-white p-5 rounded-xl shadow">
-
-              <h2 className="text-xl font-semibold mb-4">Muammolar tarixi</h2>
+              <h2 className="text-xl font-semibold mb-4">
+                Muammolar
+              </h2>
 
               {problems.length === 0 && (
-                <p className="text-gray-500">Muammo yo‘q 🎉</p>
+                <p className="text-gray-500">
+                  Muammo topilmadi
+                </p>
               )}
 
               {problems.map((p) => (
                 <div
                   key={p.id}
-                  className={`p-4 border rounded-lg mb-4 cursor-pointer 
-                    ${selectedProblem?.id === p.id ? "bg-blue-50" : ""}
-                    ${p.status === "done" ? "border-green-400" : "border-gray-300"}
-                  `}
-                  onClick={() => setSelectedProblem(p)}
+                  className="p-4 border rounded-lg mb-4 hover:shadow transition"
                 >
-                  <div className="flex justify-between">
-                    <p className="font-medium">{p.text}</p>
+                  <p className="font-medium mb-2">{p.text}</p>
 
-                    <span
-                      className={`
-                        px-2 py-1 text-xs rounded-full 
-                        ${p.status === "new" && "bg-gray-200"}
-                        ${p.status === "progress" && "bg-yellow-200"}
-                        ${p.status === "done" && "bg-green-300"}
-                      `}
+                  <div className="flex flex-wrap justify-between items-center gap-2 text-xs">
+                    <div className="flex gap-2">
+                      <span className="text-gray-500">
+                        {new Date(p.createdAt).toLocaleString()}
+                      </span>
+
+                      <span className="bg-blue-100 text-blue-700 px-2 rounded">
+                        {getTypeLabel(p.type)}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => copyText(p.text)}
+                      className="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm"
                     >
-                      {p.status === "new" && "Yangi"}
-                      {p.status === "progress" && "Jarayonda"}
-                      {p.status === "done" && "Yechilgan"}
-                    </span>
+                      Copy
+                    </button>
                   </div>
-
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(p.createdAt).toLocaleString()}
-                  </p>
                 </div>
               ))}
             </div>
-
-            {/* FILE UPLOADER */}
-            {selectedProblem && (
-              <div className="bg-white p-5 rounded-xl shadow mt-6">
-                <h2 className="text-xl font-semibold mb-3">
-                  Yechim yuklash — {selectedProblem.text}
-                </h2>
-
-                <div
-                  className="border-2 border-dashed rounded-xl p-8 text-center"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setUploadFile(e.dataTransfer.files[0]);
-                  }}
-                >
-                  {!uploadFile ? (
-                    <p className="text-gray-600">Faylni bu yerga tashlang</p>
-                  ) : (
-                    <p className="text-green-600">Tanlangan fayl: {uploadFile.name}</p>
-                  )}
-                </div>
-
-                <button
-                  onClick={sendSolution}
-                  className="w-full mt-4 bg-blue-600 text-white py-2 rounded"
-                >
-                  Yechimni yuborish
-                </button>
-              </div>
-            )}
           </>
         )}
       </div>
-
     </div>
   );
 }
