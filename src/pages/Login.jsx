@@ -155,10 +155,7 @@ export default function Login() {
           </button>
         </div>
 
-        {/* Footer info */}
-        <p className="text-center mt-8 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-          Secure Access Portal &bull; 2026
-        </p>
+        
       </div>
     </div>
   );
