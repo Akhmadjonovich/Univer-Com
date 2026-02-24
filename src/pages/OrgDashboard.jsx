@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
-import { ref, push, onValue, query, orderByChild, equalTo } from "firebase/database";
+// 1. 'update' funksiyasini import qilamiz
+import { ref, push, onValue, query, orderByChild, equalTo, update } from "firebase/database"; 
 import { db } from "../../firebase";
 import { useAuth } from "../context/AuthContext";
+// Lucide-react ikonkalari (npm install lucide-react)
+import { 
+  Plus, Building2, Clock, CheckCircle2, 
+  RotateCcw, PlayCircle, CheckCircle, ChevronRight, Trash2 
+} from "lucide-react";
 
 const PROBLEM_TYPES = [
   { value: "mexanika", label: "Mexanika-mashinasozlik" },
@@ -13,30 +19,6 @@ const PROBLEM_TYPES = [
   { value: "axborot_texnologiyalari", label: "Axborot texnologiyalari va telekommunikatsiya" },
   { value: "Boshqa", label: "Boshqa" },
 ];
-
-// SVG Ikonkalar (Komponent ichida ortiqcha joy egallamasligi uchun tashqarida)
-const Icons = {
-  Plus: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  ),
-  Building: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h18M9 6h6m-6 3h6m-6 3h6" />
-    </svg>
-  ),
-  Clock: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  Check: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-    </svg>
-  )
-};
 
 export default function OrgDashboard() {
   const { user } = useAuth();
@@ -64,6 +46,18 @@ export default function OrgDashboard() {
     });
   }, [user?.id]);
 
+  // Statusni yangilash funksiyasi
+  const updateStatus = (problemId, newStatus) => {
+    const problemRef = ref(db, `problems/${problemId}`);
+    update(problemRef, { status: newStatus })
+      .then(() => {
+        console.log("Status muvaffaqiyatli yangilandi");
+      })
+      .catch((error) => {
+        alert("Xatolik yuz berdi: " + error.message);
+      });
+  };
+
   const submitNewProblem = () => {
     if (!newProblem.trim() || !problemType) {
       alert("Iltimos, barcha maydonlarni to'ldiring");
@@ -84,47 +78,47 @@ export default function OrgDashboard() {
   const getTypeLabel = (value) => PROBLEM_TYPES.find((t) => t.value === value)?.label || value;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12 text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12 text-slate-900 font-sans selection:bg-indigo-100">
       <div className="max-w-6xl mx-auto">
         
         {/* ================= HEADER ================= */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Tashkilot Paneli</h1>
-            <p className="text-slate-500 font-medium">Muammolar va yechimlar monitoringi</p>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Tashkilot <span className="text-indigo-600">Paneli</span></h1>
+            <p className="text-slate-500 font-medium mt-1 text-lg">Muammolar monitoringi va boshqaruvi</p>
           </div>
           
-          <div className="flex items-center gap-4 bg-white p-2 pr-5 rounded-2xl shadow-sm border border-slate-200">
-            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-              <Icons.Building />
+          <div className="flex items-center gap-4 bg-white p-3 pr-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100 transition-transform hover:scale-105">
+              <Building2 size={28} />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Tashkilot</p>
-              <p className="font-bold text-slate-700">{user?.name || "Noma'lum"}</p>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-0.5">Avtorizatsiya</p>
+              <p className="font-extrabold text-slate-800 text-lg">{user?.name || "Noma'lum"}</p>
             </div>
           </div>
         </div>
 
         {/* ================= MAIN CONTENT ================= */}
-        <div className="grid lg:grid-cols-12 gap-10">
+        <div className="grid lg:grid-cols-12 gap-12">
           
           {/* LEFT: FORM */}
           <div className="lg:col-span-5">
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-8">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <span className="w-2 h-8 bg-indigo-600 rounded-full inline-block"></span>
-                Yangi murojaat
+            <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-100 sticky top-10">
+              <h2 className="text-2xl font-black mb-8 flex items-center gap-3 text-slate-800">
+                <span className="w-2.5 h-10 bg-indigo-600 rounded-full"></span>
+                Yangi muammo
               </h2>
 
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-600 mb-2 ml-1">Kategoriya</label>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Kategoriya</label>
                   <select
-                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all appearance-none cursor-pointer font-semibold text-slate-700"
                     value={problemType}
                     onChange={(e) => setProblemType(e.target.value)}
                   >
-                    <option value="">Muammo turini tanlang...</option>
+                    <option value="">Yo'nalishni tanlang...</option>
                     {PROBLEM_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
@@ -132,10 +126,10 @@ export default function OrgDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-600 mb-2 ml-1">Batafsil tavsif</label>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Muammo tavsifi</label>
                   <textarea
-                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl h-44 focus:border-indigo-500 focus:bg-white outline-none transition-all resize-none"
-                    placeholder="Muammoni qisqacha va aniq yozing..."
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-2xl h-48 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all resize-none font-medium text-slate-700 leading-relaxed"
+                    placeholder="Muammo haqida batafsil ma'lumot qoldiring..."
                     value={newProblem}
                     onChange={(e) => setNewProblem(e.target.value)}
                   />
@@ -143,9 +137,10 @@ export default function OrgDashboard() {
 
                 <button
                   onClick={submitNewProblem}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-200 transition-all active:scale-[0.97] flex items-center justify-center gap-3 group"
                 >
-                  <Icons.Plus /> Yuborish
+                  <Plus className="group-hover:rotate-90 transition-transform" /> 
+                  Platformaga joylash
                 </button>
               </div>
             </div>
@@ -153,53 +148,84 @@ export default function OrgDashboard() {
 
           {/* RIGHT: LIST */}
           <div className="lg:col-span-7">
-            <div className="flex items-center justify-between mb-6 px-2">
-              <h2 className="text-xl font-bold text-slate-800">Mening muammolarim</h2>
-              <div className="px-4 py-1 bg-slate-200 rounded-full text-xs font-black text-slate-600 italic">
-                {problems.length} TA
+            <div className="flex items-center justify-between mb-8 px-2">
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Mening muammolarim</h2>
+              <div className="px-5 py-1.5 bg-slate-100 border border-slate-200 rounded-full text-[11px] font-black text-slate-500 tracking-widest">
+                {problems.length} TA AKTIV
               </div>
             </div>
 
-            <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 scrollbar-hide">
+            <div className="space-y-6 max-h-[800px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-slate-200">
               {loading ? (
-                <div className="text-center py-20 text-slate-400 font-medium animate-pulse">Ma'lumotlar yuklanmoqda...</div>
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
+                  <RotateCcw className="animate-spin text-indigo-500" size={32} />
+                  <p className="font-bold tracking-widest text-xs uppercase">Ma'lumotlar yuklanmoqda...</p>
+                </div>
               ) : problems.length === 0 ? (
-                <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400 font-medium">Hozircha muammolar mavjud emas.</p>
+                <div className="bg-white rounded-[2.5rem] p-20 text-center border-2 border-dashed border-slate-200 shadow-inner">
+                  <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Plus className="text-slate-300" size={40} />
+                  </div>
+                  <p className="text-slate-400 font-bold text-lg">Hozircha hech qanday muammo joylamadingiz.</p>
                 </div>
               ) : (
                 problems.map((p) => (
-                  <div key={p.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-xl hover:shadow-slate-200/60 transition-all group">
-                    <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                      <span className="px-4 py-1.5 bg-indigo-50 text-indigo-700 text-[11px] font-black uppercase tracking-widest rounded-xl">
+                  <div key={p.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-300 group relative">
+                    
+                    <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+                      <span className="px-4 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-[0.15em] rounded-xl border border-indigo-100">
                         {getTypeLabel(p.type)}
                       </span>
-                      <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                        <Icons.Clock />
+                      <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                        <Clock size={14} />
                         {new Date(p.createdAt).toLocaleDateString("uz-UZ")}
                       </div>
                     </div>
 
-                    <p className="text-slate-700 font-semibold leading-relaxed mb-6 group-hover:text-slate-900 transition-colors">
+                    <p className="text-slate-700 font-bold text-lg leading-relaxed mb-8 group-hover:text-slate-900 transition-colors">
                       {p.text}
                     </p>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                      <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase
-                        ${p.status === "new" ? "bg-orange-50 text-orange-600" : ""}
-                        ${p.status === "progress" ? "bg-blue-50 text-blue-600" : ""}
-                        ${p.status === "done" ? "bg-emerald-50 text-emerald-600" : ""}
-                      `}>
-                        {p.status === "done" && <Icons.Check />}
-                        {p.status === "new" ? "Yangi" : p.status === "progress" ? "Jarayonda" : "Bajarildi"}
-                      </div>
+                    <div className="flex flex-wrap items-center justify-between gap-6 pt-6 border-t border-slate-50">
                       
-                      <button className="text-slate-300 hover:text-indigo-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
-                      </button>
+                      {/* STATUS CONTROL AREA */}
+                      <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                        <button 
+                          onClick={() => updateStatus(p.id, "new")}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${p.status === "new" ? "bg-amber-500 text-white shadow-lg shadow-amber-200" : "text-slate-400 hover:text-slate-600"}`}
+                        >
+                          Yangi
+                        </button>
+                        <button 
+                          onClick={() => updateStatus(p.id, "progress")}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${p.status === "progress" ? "bg-blue-500 text-white shadow-lg shadow-blue-200" : "text-slate-400 hover:text-slate-600"}`}
+                        >
+                          Jarayonda
+                        </button>
+                        <button 
+                          onClick={() => updateStatus(p.id, "done")}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${p.status === "done" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" : "text-slate-400 hover:text-slate-600"}`}
+                        >
+                          Bajarildi
+                        </button>
+                      </div>
+
+                      {/* CURRENT STATUS INDICATOR */}
+                      <div className="flex items-center gap-3">
+                         {p.status === 'done' && (
+                           <div className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase italic animate-bounce">
+                             <CheckCircle size={18} /> Muvaffaqiyatli!
+                           </div>
+                         )}
+                         <button className="w-10 h-10 bg-slate-50 text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl flex items-center justify-center transition-all">
+                            <ChevronRight size={20} />
+                         </button>
+                      </div>
+
                     </div>
+                    
+                    {/* Hover Decoration */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/30 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl"></div>
                   </div>
                 ))
               )}

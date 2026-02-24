@@ -1,197 +1,254 @@
 import { useState, useEffect } from "react";
-import { ref, push, onValue } from "firebase/database";
+import { ref, push, onValue, update, remove } from "firebase/database";
 import { db } from "../../firebase";
-
-// SVG Ikonkalar
-const Icons = {
-  Plus: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  ),
-  UserGroup: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.998 5.998 0 00-12 0m12 0c0-1.657-1.343-3-3-3m-1.357-3.063a6.75 6.75 0 00-1.357-3.063m0 0a6.75 6.75 0 011.357 3.063m0 0A6.75 6.75 0 0112 15.75a6.75 6.75 0 01-4.5-5.25m4.5 5.25a6.75 6.75 0 004.5-5.25m-4.5 5.25a6.75 6.75 0 01-4.5-5.25m4.5 5.25a6.75 6.75 0 00-4.5-5.25" />
-    </svg>
-  ),
-  Key: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-400">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6.75 6.75 0 01-13.5 0m13.5 0a6.75 6.75 0 00-13.5 0m13.5 0a6.75 6.75 0 01-13.5 0m0 0V15m0 0l2.25 2.25M6.75 15l-2.25 2.25m4.5-4.5V15m0 0l2.25 2.25M11.25 15l-2.25 2.25" />
-    </svg>
-  ),
-  Phone: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-    </svg>
-  )
-};
+import { 
+  Plus, Building2, Key, Phone, Edit3, 
+  Save, X, Trash2, Search, ShieldCheck 
+} from "lucide-react";
 
 export default function AdminPanel() {
   const [orgName, setOrgName] = useState("");
   const [orgPhone, setOrgPhone] = useState("");
-  const [masName, setMasName] = useState("");
-  const [masPhone, setMasPhone] = useState("");
   const [users, setUsers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Tahrirlash uchun state
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", login: "", password: "" });
 
   const generatePassword = () => Math.floor(100000 + Math.random() * 900000).toString();
-  const toLogin = (str) => str.toLowerCase().replace(/ /g, "");
+  const toLogin = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+  // Tashkilot qo'shish
   const addOrganization = () => {
     if (!orgName || !orgPhone) return alert("Iltimos barcha maydonlarni to‘ldiring!");
     const login = toLogin(orgName);
     const password = generatePassword();
-    push(ref(db, "users"), { name: orgName, phone: orgPhone, login, password, role: "tashkilot" });
+    
+    push(ref(db, "users"), { 
+      name: orgName, 
+      phone: orgPhone, 
+      login, 
+      password, 
+      role: "tashkilot",
+      createdAt: Date.now()
+    });
+    
     setOrgName(""); setOrgPhone("");
-    alert(`Tashkilot qo‘shildi.\nLogin: ${login}\nParol: ${password}`);
+    alert(`Tashkilot qo‘shildi!`);
   };
 
-  const addMasul = () => {
-    if (!masName || !masPhone) return alert("Iltimos barcha maydonlarni to‘ldiring!");
-    const login = toLogin(masName);
-    const password = generatePassword();
-    push(ref(db, "users"), { name: masName, phone: masPhone, login, password, role: "masul" });
-    setMasName(""); setMasPhone("");
-    alert(`Mas’ul qo‘shildi.\nLogin: ${login}\nParol: ${password}`);
+  // Tahrirlashni boshlash
+  const startEdit = (user) => {
+    setEditingId(user.id);
+    setEditForm({ name: user.name, phone: user.phone, login: user.login, password: user.password });
+  };
+
+  // O'zgarishlarni saqlash
+  const saveEdit = (id) => {
+    const userRef = ref(db, `users/${id}`);
+    update(userRef, editForm)
+      .then(() => {
+        setEditingId(null);
+      })
+      .catch((err) => alert("Xatolik: " + err.message));
+  };
+
+  // Tashkilotni o'chirish
+  const deleteOrg = (id) => {
+    if (window.confirm("Haqiqatan ham ushbu tashkilotni tizimdan o'chirmoqchimisiz?")) {
+      remove(ref(db, `users/${id}`));
+    }
   };
 
   useEffect(() => {
     const usersRef = ref(db, "users");
     return onValue(usersRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) setUsers(Object.keys(data).map((key) => ({ id: key, ...data[key] })));
-      else setUsers([]);
+      if (data) {
+        const list = Object.keys(data)
+          .map((key) => ({ id: key, ...data[key] }))
+          .filter(u => u.role === "tashkilot")
+          .sort((a, b) => b.createdAt - a.createdAt);
+        setUsers(list);
+      } else {
+        setUsers([]);
+      }
     });
   }, []);
 
-  const organizations = users.filter(u => u.role === "tashkilot");
-  const masuls = users.filter(u => u.role === "masul");
+  const filteredOrgs = users.filter(u => 
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.login.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12 font-sans text-slate-900">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         
         {/* ================= HEADER ================= */}
-        <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-slate-800">Admin Panel</h1>
-            <p className="text-slate-500 font-medium">Tizim foydalanuvchilari va tashkilotlarni boshqarish</p>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-indigo-600 p-2 rounded-lg text-white">
+                <ShieldCheck size={24} />
+              </div>
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">Super Admin</h1>
+            </div>
+            <p className="text-slate-500 font-medium ml-1">Tashkilotlar va kirish huquqlarini boshqarish</p>
           </div>
-          <div className="flex items-center gap-3 bg-white px-6 py-3 rounded-[1.5rem] shadow-sm border border-slate-200">
-            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span className="font-bold text-slate-700 uppercase tracking-widest text-xs">Tizim Faol</span>
+          
+          <div className="flex items-center gap-4 bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200">
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Tizim holati</p>
+              <p className="text-sm font-bold text-emerald-600">Boshqaruv faol</p>
+            </div>
+            <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500">
+              <Building2 size={20} />
+            </div>
           </div>
         </header>
 
-        {/* ================= FORMS SECTION ================= */}
-        <div className="grid lg:grid-cols-2 gap-8 mb-12">
+        <div className="grid lg:grid-cols-12 gap-10">
           
-          {/* Add Organization */}
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                <Icons.Plus />
+          {/* ================= LEFT: ADD FORM ================= */}
+          <div className="lg:col-span-4">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-8">
+              <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Plus className="text-indigo-600" size={24} />
+                Yangi Tashkilot
+              </h2>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Korxona nomi</label>
+                  <input type="text" placeholder="Masalan: UzAuto Motors" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-semibold" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Aloqa uchun tel</label>
+                  <input type="text" placeholder="+998 90 123 45 67" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-semibold" value={orgPhone} onChange={(e) => setOrgPhone(e.target.value)} />
+                </div>
+                <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all active:scale-95 mt-2 flex items-center justify-center gap-2" onClick={addOrganization}>
+                  Ro'yxatga olish
+                </button>
               </div>
-              <h2 className="text-xl font-black text-slate-800">Tashkilot qo‘shish</h2>
-            </div>
-            <div className="space-y-4">
-              <input type="text" placeholder="Korxona nomi" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
-              <input type="text" placeholder="Telefon (masalan: +998...)" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium" value={orgPhone} onChange={(e) => setOrgPhone(e.target.value)} />
-              <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all active:scale-95" onClick={addOrganization}>Tashkilotni ro'yxatga olish</button>
             </div>
           </div>
 
-          {/* Add Mas'ul */}
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                <Icons.Plus />
+          {/* ================= RIGHT: LIST & EDIT ================= */}
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-sm tracking-tight">
+                  <span className="w-2 h-5 bg-indigo-600 rounded-full"></span> 
+                  Tashkilotlar bazasi
+                  <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[10px]">{users.length}</span>
+                </h3>
+                
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Izlash..." 
+                    className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 w-full md:w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
-              <h2 className="text-xl font-black text-slate-800">Mas’ul qo‘shish</h2>
-            </div>
-            <div className="space-y-4">
-              <input type="text" placeholder="F.I.Sh" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:border-emerald-500 focus:bg-white outline-none transition-all font-medium" value={masName} onChange={(e) => setMasName(e.target.value)} />
-              <input type="text" placeholder="Telefon" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:border-emerald-500 focus:bg-white outline-none transition-all font-medium" value={masPhone} onChange={(e) => setMasPhone(e.target.value)} />
-              <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all active:scale-95" onClick={addMasul}>Mas'ulni ro'yxatga olish</button>
-            </div>
-          </div>
-        </div>
 
-        {/* ================= TABLES SECTION ================= */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          
-          {/* Organizations Table */}
-          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-sm">
-                <span className="w-2 h-5 bg-indigo-600 rounded-full"></span> Tashkilotlar
-              </h3>
-              <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-black">{organizations.length} TA</span>
-            </div>
-            <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-slate-50 z-10">
-                  <tr className="text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                    <th className="p-5">Ism / Login</th>
-                    <th className="p-5">Parol</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {organizations.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="p-5">
-                        <p className="font-bold text-slate-800">{u.name}</p>
-                        <p className="text-xs text-indigo-500 font-medium">@{u.login}</p>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">
-                            <Icons.Phone /> {u.phone}
-                        </div>
-                      </td>
-                      <td className="p-5">
-                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl w-fit group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-200 transition-all font-mono text-sm font-bold text-slate-600 tracking-wider">
-                          <Icons.Key /> {u.password}
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50/50">
+                    <tr className="text-slate-400 text-[10px] uppercase font-black tracking-widest">
+                      <th className="p-6">Tashkilot ma'lumotlari</th>
+                      <th className="p-6">Kirish kalitlari</th>
+                      <th className="p-6 text-right">Amallar</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Masuls Table */}
-          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-sm">
-                <span className="w-2 h-5 bg-emerald-600 rounded-full"></span> Universitet Mas’ullari
-              </h3>
-              <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-black">{masuls.length} TA</span>
-            </div>
-            <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-slate-50 z-10">
-                  <tr className="text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                    <th className="p-5">F.I.Sh / Login</th>
-                    <th className="p-5">Parol</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {masuls.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="p-5">
-                        <p className="font-bold text-slate-800">{u.name}</p>
-                        <p className="text-xs text-emerald-600 font-medium">@{u.login}</p>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">
-                            <Icons.Phone /> {u.phone}
-                        </div>
-                      </td>
-                      <td className="p-5">
-                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl w-fit group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-200 transition-all font-mono text-sm font-bold text-slate-600 tracking-wider">
-                          <Icons.Key /> {u.password}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredOrgs.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="p-6">
+                          {editingId === u.id ? (
+                            <div className="space-y-2">
+                              <input 
+                                className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                value={editForm.name} 
+                                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                              />
+                              <input 
+                                className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                                value={editForm.phone} 
+                                onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="font-bold text-slate-800">{u.name}</p>
+                              <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1 font-medium">
+                                <Phone size={12} /> {u.phone}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-6">
+                          {editingId === u.id ? (
+                            <div className="space-y-2">
+                              <input 
+                                className="w-full p-2 text-sm border rounded-lg bg-indigo-50 outline-none" 
+                                value={editForm.login} 
+                                onChange={(e) => setEditForm({...editForm, login: e.target.value})}
+                              />
+                              <input 
+                                className="w-full p-2 text-sm border rounded-lg bg-amber-50 outline-none font-mono" 
+                                value={editForm.password} 
+                                onChange={(e) => setEditForm({...editForm, password: e.target.value})}
+                              />
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <div className="text-[10px] font-mono font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md w-fit">
+                                @{u.login}
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-600 font-mono text-xs font-bold">
+                                <Key size={12} className="text-slate-300" /> {u.password}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-6">
+                          <div className="flex items-center justify-end gap-2">
+                            {editingId === u.id ? (
+                              <>
+                                <button onClick={() => saveEdit(u.id)} className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-100 transition-all">
+                                  <Save size={18} />
+                                </button>
+                                <button onClick={() => setEditingId(null)} className="p-2 bg-slate-200 text-slate-600 rounded-xl hover:bg-slate-300 transition-all">
+                                  <X size={18} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => startEdit(u)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                                  <Edit3 size={18} />
+                                </button>
+                                <button onClick={() => deleteOrg(u.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredOrgs.length === 0 && (
+                  <div className="p-20 text-center text-slate-400 font-medium">
+                    Ma'lumot topilmadi...
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
