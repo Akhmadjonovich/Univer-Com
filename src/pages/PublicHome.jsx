@@ -63,12 +63,12 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-18 items-center py-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                <Briefcase className="text-white w-6 h-6" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                <img src="/logo.png" alt="" />
               </div>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-800 hidden sm:block">
-                Ochiq <span className="text-indigo-600">Muammolar</span>
-              </h1>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-800">
+  Inno<span className="text-indigo-600">Bridge</span>
+</h1>
             </div>
 
             <div className="flex items-center gap-3">
